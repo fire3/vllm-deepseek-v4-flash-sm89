@@ -1,13 +1,13 @@
 # vLLM DeepSeek V4 (Flash) — SM89 (Ada) 移植版
 
-本仓库是 vLLM DeepSeek V4 (Flash) 稀疏 MLA 在 **NVIDIA Ada (SM89, 如 L40S)** 平台移植工作的**总览仓库**，面向两位读者：**使用者**（如何部署运行）与**开发者**（移植思路、开发调试、如何继续迭代）。技术细节见下方关联的两个分支文档。
+本仓库是 vLLM DeepSeek V4 (Flash) 稀疏 MLA 在 **NVIDIA Ada (SM89, 如 L40S)** 平台移植工作的**总览仓库**，面向两位读者：**使用者**（如何部署运行）与**开发者**（移植思路、开发调试、如何继续迭代）。本 README 即总览与操作说明所在，关联的两个移植分支不再维护各自的 `README_SM89.md`。
 
 ## 关联仓库与分支
 
-| 组件 | 仓库 | 分支 | 详细文档 |
-| --- | --- | --- | --- |
-| 推理框架 | `github.com/fire3/vllm` | `v0.27.0-dsv4-sm89` | [README_SM89.md](https://github.com/fire3/vllm/blob/v0.27.0-dsv4-sm89/README_SM89.md) |
-| 内核/底层库 | `github.com/fire3/flashinfer` | `v0.6.16.post3-dev-sm89-dsv4` | [README_SM89.md](https://github.com/fire3/flashinfer/blob/v0.6.16.post3-dev-sm89-dsv4/README_SM89.md) |
+| 组件 | 仓库 | 分支 |
+| --- | --- | --- |
+| 推理框架 | `github.com/fire3/vllm` | `v0.27.0-sm89` |
+| 内核/底层库 | `github.com/fire3/flashinfer` | `v0.6.17-sm89` |
 
 vLLM 侧负责调用策略与能力探测，FlashInfer 侧负责稀疏 MLA 内核的 SM89 适配，两端**必须锁步升级**。
 
@@ -39,7 +39,7 @@ bash scripts/build/sm89_build_jit_cache_wheel.sh
 bash scripts/build/sm89_build_wheel.sh --editable
 ```
 
-**顺序**：先装 FlashInfer，后装 vLLM。版本配对 vLLM `0.27.1+sm89` + FlashInfer `0.6.16.post3+sm89`（均为 PEP 440 `+sm89` local 标记，specifier 匹配忽略 local 版本）。切勿用上游 flashinfer 替代——其缺少 SM89 稀疏 MLA，vLLM 启动校验会失败。
+**顺序**：先装 FlashInfer，后装 vLLM。版本配对 vLLM `0.27.1+sm89` + FlashInfer `0.6.17+sm89`（均为 PEP 440 `+sm89` local 标记，specifier 匹配忽略 local 版本）。切勿用上游 flashinfer 替代——其缺少 SM89 稀疏 MLA，vLLM 启动校验会失败。
 
 ### 启动服务（参考生产环境脚本）
 
@@ -127,4 +127,4 @@ pytest tests/attention/test_sparse_mla_sm89_gate.py tests/attention/test_sparse_
 
 ---
 
-更多细节：见 [vLLM 侧 README_SM89](https://github.com/fire3/vllm/blob/v0.27.0-dsv4-sm89/README_SM89.md)（编译与服务方法）与 [FlashInfer 侧 README_SM89](https://github.com/fire3/flashinfer/blob/v0.6.16.post3-dev-sm89-dsv4/README_SM89.md)（内核移植与数值验证）。
+更多细节：见 [vLLM 侧 README](https://github.com/fire3/vllm/blob/v0.27.0-sm89/README.md)（编译与服务方法）与 [FlashInfer 侧 README](https://github.com/fire3/flashinfer/blob/v0.6.17-sm89/README.md)（内核移植与数值验证）。
