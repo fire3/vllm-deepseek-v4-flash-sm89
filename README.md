@@ -46,6 +46,21 @@ uv pip install -e . --torch-backend=auto
 - 编译内存受限时用 `MAX_JOBS` 限制并行度（WSL 下建议 `export MAX_JOBS=1`）。
 - 稀疏 MLA 后端为纯 Triton 实现。
 
+#### 编译 wheel
+
+构建可分发/可离线安装的 wheel（产物在 `dist/`，`--no-build-isolation` 复用当前环境里的 cu130 torch）：
+
+```bash
+uv build --wheel --no-build-isolation
+uv pip install dist/vllm-*.whl          # 本机安装，或在其他机子上拷贝后安装
+```
+
+要点：
+
+- 目标架构从 PyTorch 环境的 `CMAKE_CUDA_FLAGS` 继承；只想编 SM89 可用 `TORCH_CUDA_ARCH_LIST=8.9 uv build --wheel --no-build-isolation` 缩短构建与缩小 wheel。
+- wheel 版本经 setuptools-scm 派生：无 tag 时形如 `vllm-0.28.0.devXXX+gHASH.dYYYYMMDD`，本地构建与上游 nightly 区分开（如需要可自行打 tag）。
+- C/C++/Triton 内核改动后需重新 `uv build`（Python 改动可用上文的 `-e .` 可编辑安装，无需重编）。
+
 ### 启动服务
 
 环境变量：
