@@ -1,8 +1,4 @@
 [submodule "vllm"]
 	path = vllm
 	url = git@github.com:fire3/vllm.git
-	branch = v0.27.0-sm89
-[submodule "flashinfer"]
-	path = flashinfer
-	url = git@github.com:fire3/flashinfer.git
-	branch = v0.6.17-sm89
+	branch = v0.28.0-sm89
