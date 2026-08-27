@@ -23,11 +23,27 @@ Python 3.12、CUDA 13.0、PyTorch 2.13.0+cu130、L40S。
 
 ### 安装
 
-在 vllm 仓库内按上游常规流程构建 wheel（`TORCH_CUDA_ARCH_LIST=8.9+PTX` 等，产物带 `+sm89` local 标记），或按该分支 README / 构建文档执行。
+按上游标准流程从源码构建（v0.28 起默认经 `uv` + `--torch-backend=auto` 引导编译）：
+
+```bash
+git clone git@github.com:fire3/vllm.git -b v0.28.0-sm89
+cd vllm
+uv pip install -e . --torch-backend=auto
+```
 
 要点：
 
-- vLLM 构建用 `--no-build-isolation` 复用 conda env 里的 cu130 torch，且默认 `FETCHCONTENT_FULLY_DISCONNECTED=ON` 直接使用 `.deps`，缺失会报错；需要联网首次下载时可设 `FETCHCONTENT_FULLY_DISCONNECTED=0`。
+- 编译器需 GCC/G++ ≥ 11.3（PyTorch C++20 头文件不兼容更旧的 GCC）。
+- 默认 `CUDA_SUPPORTED_ARCHS` 已含 8.9，L40S（SM89）标准构建即可；只想编目标架构时可用 `TORCH_CUDA_ARCH_LIST=8.9` 缩短构建时间。
+- 复用已有 PyTorch（如 conda env 里的 cu130）时，按上游「使用已有 PyTorch」流程：
+
+  ```bash
+  python use_existing_torch.py
+  uv pip install -r requirements/build/cuda.txt
+  uv pip install --no-build-isolation -e .
+  ```
+
+- 编译内存受限时用 `MAX_JOBS` 限制并行度（WSL 下建议 `export MAX_JOBS=1`）。
 - 稀疏 MLA 后端为纯 Triton 实现。
 
 ### 启动服务
