@@ -71,18 +71,12 @@ vllm serve <model_dir> \
 
 由 vLLM 侧 **Triton** 实现稀疏 MLA：
 
-1. **decode**：移植自 SGLang SM120 的 `flash_mla_sparse_decode_triton` 分块稀疏 MLA decode 内核（`triton_sparse_mla_decode.py`）。
-2. **prefill**：phase-2A 分块双源融合 prefill 内核（可选 K-split），prefill token 按 decode 风格逐行展开，`triton_sparse_mla_prefill.py`。
+1. **decode + prefill**：共用同一个分块双源融合 kernel（query-major、head-blocked，SWA 与压缩源共享 online-softmax 状态）；decode（每行一 token）通过 `triton_sparse_mla_decode_vllm` 薄封装路由到同一 kernel（`triton_sparse_mla_prefill.py`）。
+2. **K-split**：小 decode batch（T≤64）按固定默认做 (B, S) CTA 切分 + partial-LSE 合并，更大的 T 退回单 CTA 融合 kernel，无需开关。
 3. **后端/路由**：`triton_sparse.py` 提供 `DeepseekV4TritonMLASparseBackend` / `DeepseekV4TritonMLAAttention`（SM89 + SM120），复用同一套 indexer、`fp8_ds_mla` KV page 布局与稀疏索引元数据。
 4. **SM89 fallbacks**：DeepGEMM 不可用时 Triton grouped-bf16 `o_proj`/`tf32_hc_prenorm_gemm` fallback、SM89 indexer top-k 的 `fp8_mqa_logits_triton`（fp16 MMA + fp32 accumulate）等。
 
-Triton decode kernel 默认用固定 config（确定性、无运行时 benchmark）；也可通过环境变量开启 autotune 或切换旧流程做 A/B 对比：
-
-- `VLLM_TRITON_SPARSE_MLA_DECODE_AUTOTUNE=1` — decode kernel 镜像上游 SGLang 算子的 autotune。
-- `VLLM_TRITON_SPARSE_MLA_PREFILL_AUTOTUNE=1` — prefill kernel autotune。
-- `VLLM_TRITON_SPARSE_MLA_KSPLIT=0` — 关闭 (B, S) CTA 切分，退回单 CTA 融合 kernel（小 decode batch 时提高并行度，默认开）。
-- `VLLM_TRITON_SPARSE_MLA_PREFILL_DECODE_WRAPPER=1` — prefill 改用 decode-wrapper 启动器做 A/B 对比。
-- `VLLM_TRITON_SPARSE_MLA_DECODE_LEGACY=1` — decode 退回 phase-1 elementwise 两遍 kernel。
+内核始终运行默认配置（固定 config，确定性、无运行时 benchmark），不做 autotune，也无 A/B 切换开关。
 
 ## 开发
 
@@ -96,16 +90,15 @@ git submodule update --init
 ### 验证
 
 ```bash
-pytest tests/kernels/attention/test_triton_sparse_mla_decode.py \
-       tests/kernels/attention/test_triton_sparse_mla_prefill.py \
+pytest tests/kernels/attention/test_triton_sparse_mla_prefill.py \
        tests/v1/attention/test_triton_sparse_mla_backend.py
 ```
 
-联合数值验证 decode + prefill 通过（NH=8/16/32、topk、nt、sink 开关、变长 topk_length）。
+联合数值验证 decode + prefill 通过（NH=8/16/32、topk、nt、sink 开关、变长 topk_length）；decode 覆盖在 `test_triton_sparse_mla_prefill.py` 内的 `test_triton_decode_vllm_tiled_matches_reference`。
 
 ## 已知限制
 
-- Triton 实现以正确性为先，性能未逐项对齐上游 SGLang SM120 算子（如未开启 autotune、TMA 退化可能带来性能差距）。
+- Triton 实现以正确性为先，性能未逐项对齐上游 SGLang SM120 算子（固定 config，不做 autotune，TMA 退化可能带来性能差距）。
 - DSpark 投机解码未启用（CUDA graph 重放异步越界问题未根因）。
 - 源码/日志仍可能保留部分架构术语（共享 indexer/KV page 布局与能力探测框架）。
 
