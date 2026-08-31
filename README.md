@@ -1,3 +1,5 @@
+**[English](README-en.md)**
+
 # vLLM DeepSeek V4 (Flash) — SM89 (Ada) 移植
 
 [vLLM DeepSeek V4 (Flash) 稀疏 MLA](https://github.com/vllm-project/vllm) 在 **NVIDIA Ada (SM89, 如 L40S)** 平台的移植总览仓库。
